@@ -13,6 +13,7 @@ from django.contrib.auth import login, authenticate
 import logging
 import json
 from django.views.decorators.csrf import csrf_exempt
+from .models import Dealership, Review
 from .populate import initiate
 
 
@@ -79,17 +80,59 @@ def registration(request):
 
 # # Update the `get_dealerships` view to render the index page with
 # a list of dealerships
-# def get_dealerships(request):
-# ...
+def get_dealerships(request):
+    try:
+        dealerships = Dealership.objects.all()
+        dealerships_list = list(dealerships.values())
+        return JsonResponse(dealerships_list, safe=False)
+    except Exception as e:
+        logger.error(f"Error fetching dealerships: {e}")
+        return JsonResponse({"error": "Error fetching dealerships"}, status=500)
 
 # Create a `get_dealer_reviews` view to render the reviews of a dealer
-# def get_dealer_reviews(request,dealer_id):
-# ...
+def get_dealer_reviews(request, dealer_id):
+    try:
+        reviews = Review.objects.filter(dealership=dealer_id)
+        reviews_list = list(reviews.values())
+        return JsonResponse(reviews_list, safe=False)
+    except Exception as e:
+        logger.error(f"Error fetching reviews for dealer {dealer_id}: {e}")
+        return JsonResponse({"error": f"Error fetching reviews for dealer {dealer_id}"}, status=500)
 
 # Create a `get_dealer_details` view to render the dealer details
-# def get_dealer_details(request, dealer_id):
-# ...
+def get_dealer_details(request, dealer_id):
+    try:
+        dealer = get_object_or_404(Dealership, pk=dealer_id)
+        dealer_data = {
+            "id": dealer.id,
+            "name": dealer.name,
+            "state": dealer.state,
+            "address": dealer.address,
+            "zip": dealer.zip,
+            "phone": dealer.phone,
+        }
+        return JsonResponse(dealer_data)
+    except Exception as e:
+        logger.error(f"Error fetching dealer details for dealer {dealer_id}: {e}")
+        return JsonResponse({"error": f"Error fetching dealer details for dealer {dealer_id}"}, status=500)
 
 # Create a `add_review` view to submit a review
-# def add_review(request):
-# ...
+def add_review(request):
+    try:
+        data = json.loads(request.body)
+        dealer_id = data.get('dealership')
+        review = Review(
+            dealership=dealer_id,
+            name=data.get('name'),
+            review=data.get('review'),
+            purchase=data.get('purchase'),
+            purchase_date=data.get('purchase_date'),
+            car_make=data.get('car_make'),
+            car_model=data.get('car_model'),
+            car_year=data.get('car_year'),
+        )
+        review.save()
+        return JsonResponse({"message": "Review added successfully"}, status=201)
+    except Exception as e:
+        logger.error(f"Error adding review: {e}")
+        return JsonResponse({"error": "Error adding review"}, status=500)
